@@ -12,7 +12,7 @@ jobs:
       - uses: docker/setup-buildx-action@v2
       - name: Create docker image
         working-directory: ./frontend
-        run: DOCKER_BUILDKIT=1 docker build --output type=tar,dest=frontend_webserver_docker_image.tar .
+        run: docker build --output type=tar,dest=frontend_webserver_docker_image.tar .
       - uses: actions/upload-artifact@v3
         with:
           name: frontend_webserver_docker_image.tar
