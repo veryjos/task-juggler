@@ -16,4 +16,4 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: frontend_webserver_docker_image.tar
-          path: ./frontend_webserver_docker_image.tar
+          path: ./frontend/frontend_webserver_docker_image.tar
