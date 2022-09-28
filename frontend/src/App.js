@@ -5,7 +5,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <p>insert taskjuggler home page :)</p>
+        <p>insert taskjuggler v2 home page :)</p>
       </header>
     </div>
   );
