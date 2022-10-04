@@ -20,11 +20,16 @@ resource "aws_ecs_cluster" "taskjuggler_cluster" {
   name = "taskjuggler_cluster"
 }
 
+# adopt the default role created by AWS to run the task under
+data "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+}
+
 # define a task for the frontend webserver
 resource "aws_ecs_task_definition" "taskjuggler_frontend_webserver" {
   family                   = "taskjuggler_frontend_webserver"
-  task_role_arn            = "arn:aws:iam::186932938567:role/ecsTaskExecutionRole"
-  execution_role_arn       = "arn:aws:iam::186932938567:role/ecsTaskExecutionRole"
+  task_role_arn            = "${data.aws_iam_role.ecs_task_execution_role.arn}"
+  execution_role_arn       = "${data.aws_iam_role.ecs_task_execution_role.arn}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = 256
@@ -46,6 +51,41 @@ resource "aws_ecs_task_definition" "taskjuggler_frontend_webserver" {
   ])
 }
 
+# create a security group
+#
+# this is used to allow network traffic to reach our containers
+resource "aws_security_group" "taskjuggler_security_group" {
+  name = "taskjuggler_security_group"
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+}
+
+# adopt the default AWS VPC as a resource in terraform. see:
+# https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/default_vpc
+resource "aws_default_vpc" "default_vpc" {
+  tags = {
+    Name = "default VPC"
+  }
+}
+
+# create a subnet for taskjuggler
+resource "aws_subnet" "taskjuggler_subnet" {
+  cidr_block = "172.31.16.0/20"
+  vpc_id = aws_default_vpc.default_vpc.id
+}
+
 # define a service, running 5 instances of the frontend webserver
 resource "aws_ecs_service" "taskjuggler_frontend_webserver_service" {
   name                   = "taskjuggler_frontend_webserver_service"
@@ -55,8 +95,8 @@ resource "aws_ecs_service" "taskjuggler_frontend_webserver_service" {
   task_definition        = aws_ecs_task_definition.taskjuggler_frontend_webserver.id
   desired_count          = 5
   network_configuration {
-    subnets          = ["subnet-0b8f437d046a9d818"]
-    security_groups  = ["sg-057af67719d0de21b"]
+    subnets          = [aws_subnet.taskjuggler_subnet.id]
+    security_groups  = [aws_security_group.taskjuggler_security_group.id]
     assign_public_ip = true
   }
 }
