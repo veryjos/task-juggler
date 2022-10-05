@@ -80,10 +80,51 @@ resource "aws_default_vpc" "default_vpc" {
   }
 }
 
-# create a subnet for taskjuggler
+# create subnets in two availability zones
+variable "availability_zones" {
+  type    = list(string)
+  default = ["us-east-1a", "us-east-1b"]
+}
+
 resource "aws_subnet" "taskjuggler_subnet" {
-  cidr_block = "172.31.16.0/20"
-  vpc_id = aws_default_vpc.default_vpc.id
+  count                   = "${length(var.availability_zones)}"
+  vpc_id                  = aws_default_vpc.default_vpc.id
+  cidr_block              = cidrsubnet(aws_default_vpc.default_vpc.cidr_block, 4, count.index + 1)
+  availability_zone       = "${var.availability_zones[count.index]}"
+  map_public_ip_on_launch = false
+}
+
+# create a load balancer to distribute traffic to the tasks described below
+resource "aws_lb" "taskjuggler_load_balancer" {
+  name               = "taskjuggler-load-balancer"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.taskjuggler_security_group.id]
+  subnets            = aws_subnet.taskjuggler_subnet.*.id
+}
+
+# create a target group for the load balancer described above
+resource "aws_lb_target_group" "taskjuggler_target_group" {
+  name        = "taskjuggler-target-group"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_default_vpc.default_vpc.id
+  target_type = "ip"
+  depends_on  = [
+    aws_lb.taskjuggler_load_balancer
+  ]
+}
+
+# load balancer endpoint
+resource "aws_lb_listener" "frontend" {
+  load_balancer_arn = aws_lb.taskjuggler_load_balancer.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.taskjuggler_target_group.arn
+  }
 }
 
 # define a service, running 5 instances of the frontend webserver
@@ -95,8 +136,13 @@ resource "aws_ecs_service" "taskjuggler_frontend_webserver_service" {
   task_definition        = aws_ecs_task_definition.taskjuggler_frontend_webserver.id
   desired_count          = 5
   network_configuration {
-    subnets          = [aws_subnet.taskjuggler_subnet.id]
+    subnets          = aws_subnet.taskjuggler_subnet.*.id
     security_groups  = [aws_security_group.taskjuggler_security_group.id]
     assign_public_ip = true
+  }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.taskjuggler_target_group.arn
+    container_name   = "frontend_webserver"
+    container_port   = 80
   }
 }
