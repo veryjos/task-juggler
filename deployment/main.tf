@@ -63,6 +63,13 @@ resource "aws_security_group" "taskjuggler_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
     ipv6_cidr_blocks = ["::/0"]
   }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -118,8 +125,9 @@ resource "aws_lb_target_group" "taskjuggler_target_group" {
 # load balancer endpoint
 resource "aws_lb_listener" "frontend" {
   load_balancer_arn = aws_lb.taskjuggler_load_balancer.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port              = "443"
+  protocol          = "HTTPS"
+  certificate_arn   = "arn:aws:acm:us-east-1:186932938567:certificate/a5572a06-3a15-44ae-bbc5-88c193fd0447"
 
   default_action {
     type             = "forward"

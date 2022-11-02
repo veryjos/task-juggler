@@ -1,16 +1,21 @@
-import logo from './logo.svg';
 import { useAuth0 } from "@auth0/auth0-react";
-import './App.css';
-import {
-  BrowserRouter,
-  Route,
-  Routes,
-  Outlet,
-  createRoutesFromElements,
-} from 'react-router-dom';
+import { BrowserRouter, Route, Routes, Outlet } from 'react-router-dom';
 import Home from './routes/home';
 import Profile from './routes/profile';
 import Header from './widgets/header';
+import './App.css';
+
+const ProtectedRoute = () => {
+  const { loginWithRedirect, isAuthenticated } = useAuth0();
+
+  if (!isAuthenticated) {
+    loginWithRedirect();
+
+    return <>Redirecting to login..</>;
+  }
+
+  return <Outlet />;
+};
 
 const App = () => {
   const { isLoading } = useAuth0();
@@ -23,7 +28,10 @@ const App = () => {
         <div className="app-content-wrap">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/profile" element={<Profile />} />
+
+            <Route element={<ProtectedRoute />}>
+              <Route path="/profile" element={<Profile />} />
+            </Route>
           </Routes>
         </div>
       </div>
