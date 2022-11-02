@@ -1,39 +1,34 @@
 import logo from './logo.svg';
-import './App.css';
-
 import { useAuth0 } from "@auth0/auth0-react";
+import './App.css';
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  Outlet,
+  createRoutesFromElements,
+} from 'react-router-dom';
+import Home from './routes/home';
+import Profile from './routes/profile';
+import Header from './widgets/header';
 
-const LoginButton = () => {
-  const { loginWithRedirect } = useAuth0();
-
-  return <button onClick={() => loginWithRedirect()}>Log In</button>;
-};
-
-const LogoutButton = () => {
-  const { logout } = useAuth0();
-
-  return (
-    <button onClick={() => logout({ returnTo: window.location.origin })}>
-      Log Out
-    </button>
-  );
-};
-
-function App() {
-  const { isAuthenticated } = useAuth0();
+const App = () => {
+  const { isLoading } = useAuth0();
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <p>insert taskjuggler v2 home page :)</p>
-      </header>
+    !isLoading && <BrowserRouter>
+      <div className="app-content">
+        <Header />
 
-      { isAuthenticated && <span>you are logged in</span> }
-
-      <LoginButton />
-      <LogoutButton />
-    </div>
+        <div className="app-content-wrap">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/profile" element={<Profile />} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
   );
-}
+};
 
 export default App;
